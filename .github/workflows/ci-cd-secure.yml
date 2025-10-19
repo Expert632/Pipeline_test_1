@@ -3,3 +3,5 @@ on:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+- name: Checkout code
+  uses: actions/checkout@v3
