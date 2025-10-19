@@ -69,12 +69,12 @@ jobs:
         run: cosign sign-blob sbom.json
 
       - name: Run DAST Scan
-        uses: zaproxy/action-full-scan@v1
+        uses: zaproxy/action-full-scan@v2
         with:
           target: 'http://localhost:8000'
 
       - name: Upload Artefacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: secure-pipeline-reports
           path: |
