@@ -1,4 +1,4 @@
-name: CI/CD Sécurisé
+name: CI/CD Secure Pipeline
 
 on:
   push:
@@ -10,69 +10,86 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      # Step 1: Checkout code
       - name: Checkout code
         uses: actions/checkout@v3
 
+      # Step 2: Setup Python
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.x'
 
+      # Step 3: Install Trivy (official script)
       - name: Install Trivy
         run: |
-          sudo apt-get update
-          sudo apt-get install -y wget
-          wget https://github.com/aquasecurity/trivy/releases/latest/download/trivy_0.43.2_Linux-64bit.deb
-          sudo dpkg -i trivy_0.43.2_Linux-64bit.deb
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sudo sh
+      - name: Check Trivy version
+        run: trivy --version
 
+      # Step 4: Install Syft and Cosign
       - name: Install Syft and Cosign
         run: |
           curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
           curl -sSL https://github.com/sigstore/cosign/releases/latest/download/cosign-linux-amd64 -o /usr/local/bin/cosign
           chmod +x /usr/local/bin/cosign
+      - name: Check Syft and Cosign versions
+        run: |
+          syft version
+          cosign version
 
+      # Step 5: Install Semgrep, Safety, Gitleaks
       - name: Install Semgrep
         run: pip install semgrep
-
       - name: Install Safety
         run: pip install safety
-
       - name: Install Gitleaks
         run: |
           curl -sSL https://github.com/zricethezav/gitleaks/releases/latest/download/gitleaks_8.21.0_linux_x64.tar.gz | tar xz
           sudo mv gitleaks /usr/local/bin/
+          gitleaks version
 
+      # Step 6: Run Unit Tests
       - name: Run Unit Tests
         run: |
           pip install -r requirements.txt
           pytest tests/ --junitxml=unit-test-report.xml
 
+      # Step 7: Run SAST Scan
       - name: Run SAST Scan
         run: semgrep --config "p/ci"
 
+      # Step 8: Run SCA Scan
       - name: Run SCA Scan
         run: safety check
 
+      # Step 9: Run Secret Scan
       - name: Run Secret Scan
         run: gitleaks detect --source .
 
+      # Step 10: Build Docker Image
       - name: Build Docker Image
         run: docker build -t myapp:latest .
 
+      # Step 11: Scan Docker Image with Trivy
       - name: Scan Docker Image with Trivy
         run: trivy image --severity HIGH,CRITICAL myapp:latest
 
+      # Step 12: Generate SBOM
       - name: Generate SBOM
         run: syft packages dir:. -o json > sbom.json
 
+      # Step 13: Sign SBOM
       - name: Sign SBOM
         run: cosign sign-blob sbom.json
 
+      # Step 14: Run DAST Scan using ZAP
       - name: Run DAST Scan
         uses: zaproxy/action-full-scan@v0.12.0
         with:
           target: 'http://localhost:8000'
 
+      # Step 15: Upload Artefacts
       - name: Upload Artefacts
         uses: actions/upload-artifact@v4
         with:
