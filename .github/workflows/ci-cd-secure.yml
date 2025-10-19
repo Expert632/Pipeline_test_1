@@ -69,7 +69,7 @@ jobs:
         run: cosign sign-blob sbom.json
 
       - name: Run DAST Scan
-        uses: zaproxy/action-full-scan@v2
+        uses: zaproxy/action-full-scan@v0.12.0
         with:
           target: 'http://localhost:8000'
 
